@@ -1,0 +1,7 @@
+streamlit
+streamlit-option_menu
+google-generativeai
+edge-tts
+Pillow
+requests
+streamlit-mic-recorder
