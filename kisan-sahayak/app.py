@@ -7,7 +7,7 @@ import asyncio
 import edge_tts
 import requests
 
-# --- 1. CONFIG ---
+# --- 1. CONFIG (Using full model path) ---
 try:
     GEN_K = st.secrets["GENAI_KEY"]
     W_K = st.secrets["WEATHER_KEY"]
@@ -16,7 +16,10 @@ except:
     W_K = "af1ec00f9fc32d17017dc84cdc7b7613"
 
 genai.configure(api_key=GEN_K)
-model = genai.GenerativeModel('gemini-1.5-flash')
+
+# Model name fixed to full path to avoid 'NotFound' error
+MODEL_NAME = 'models/gemini-1.5-flash'
+model = genai.GenerativeModel(MODEL_NAME)
 
 # --- 2. FUNCTIONS ---
 async def speak(text):
@@ -44,7 +47,7 @@ st.set_page_config(page_title="Kisan Sahayak", layout="wide")
 st.markdown("""
 <style>
     .stApp { background-color: #0E1117; color: white; }
-    .header { background: #1A1C23; padding: 20px; border-radius: 15px; border-bottom: 5px solid #4CAF50; text-align: center; }
+    .header { background: #1A1C23; padding: 20px; border-radius: 15px; border-bottom: 5px solid #4CAF50; text-align: center; margin-bottom: 20px;}
     .card { background: #1A1C23; padding: 20px; border-radius: 15px; border: 1px solid #2E7D32; text-align: center; }
     .dev { background: #16191f; padding: 30px; border-radius: 20px; border: 2px solid #4CAF50; text-align: center; }
 </style>
@@ -52,26 +55,23 @@ st.markdown("""
 
 st.markdown("<div class='header'><h1>🌾 किसान सहायक AI</h1></div>", unsafe_allow_html=True)
 
-# Variables
-img = None
-v_in = None
-txt = None
-
+# Main Inputs
 c1, c2, c3 = st.columns([1, 2, 1])
-with c1: img = st.camera_input("📸 Photo")
-with c2: txt = st.text_input("🔍 Sawal:", placeholder="Yahan likhein...")
-with c3: v_in = speech_to_text(language='hi', key='mic', start_prompt="🎤 Bolen")
+with c1: img_file = st.camera_input("📸 Photo")
+with c2: txt_input = st.text_input("🔍 Sawal:", placeholder="Yahan likhein...")
+with c3: 
+    st.write("🎤 Mic")
+    v_in = speech_to_text(language='hi', key='mic')
 
-# AI Logic
-final_q = txt if txt else v_in
+# Logic
+final_q = txt_input if txt_input else v_in
 
-if final_q or img:
-    with st.spinner("Wait..."):
+if final_q or img_file:
+    with st.spinner("AI dhoond raha hai..."):
         try:
-            if img:
-                # Line broken for safety
-                p_img = Image.open(img)
-                res = model.generate_content(["Is photo ko samjhayein", p_img])
+            if img_file:
+                p_img = Image.open(img_file)
+                res = model.generate_content(["Kisan ki madad karein Hindi mein:", p_img])
             else:
                 res = model.generate_content(final_q)
             
@@ -79,28 +79,41 @@ if final_q or img:
             if st.button("🔊 Suniye"):
                 aud = asyncio.run(speak(res.text))
                 if aud: st.audio(aud, format="audio/mp3", autoplay=True)
-        except: st.error("Limit/Error")
+        except Exception as e:
+            st.error("AI service abhi busy hai, 1 min rukiye.")
 
 # --- 4. NAV ---
 sel = option_menu(None, ["Home", "Schemes", "Shop", "Dev"], 
-    icons=["house", "book", "cart", "person"], orientation="horizontal")
+    icons=["house", "book", "cart", "person"], orientation="horizontal",
+    styles={"container": {"background-color": "#1A1C23"}})
 
 if sel == "Home":
     city, temp, desc = get_w()
-    st.info(f"📍 {city} | 🌡️ {temp}C | {desc}")
+    st.info(f"📍 {city} | 🌡️ {temp}°C | {desc}")
+    st.write("### Swagat hai Sameer!")
 
 elif sel == "Schemes":
     sc1, sc2 = st.columns(2)
     with sc1:
-        if st.button("PM Kisan"): st.write(model.generate_content("PM Kisan Hindi").text)
+        if st.button("PM Kisan Jankari"):
+            try:
+                ans = model.generate_content("PM Kisan Samman Nidhi details in Hindi short")
+                st.write(ans.text)
+            except: st.error("Model error")
     with sc2:
-        if st.button("Fasal Bima"): st.write(model.generate_content("Fasal Bima Hindi").text)
+        if st.button("Fasal Bima Jankari"):
+            try:
+                ans = model.generate_content("Pradhan Mantri Fasal Bima Yojana Hindi")
+                st.write(ans.text)
+            except: st.error("Model error")
 
 elif sel == "Dev":
     st.markdown(f"""
     <div class='dev'>
         <h2>Sameer (11th PCM)</h2>
         <p>Dehradun, Uttarakhand</p>
-        <p>Contact: 9897979032</p>
+        <hr>
+        <p>Email: sameer2810092009@gmail.com</p>
+        <p>Phone: 9897979032</p>
     </div>
     """, unsafe_allow_html=True)
