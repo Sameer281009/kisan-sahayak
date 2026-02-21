@@ -24,9 +24,11 @@ async def generate_voice(text):
         communicate = edge_tts.Communicate(text[:250], "hi-IN-MadhurNeural")
         audio_data = b""
         async for chunk in communicate.stream():
-            if chunk["type"] == "audio": audio_data += chunk["data"]
+            if chunk["type"] == "audio": 
+                audio_data += chunk["data"]
         return audio_data
-    except: return None
+    except: 
+        return None
 
 @st.cache_data(ttl=3600)
 def get_weather():
@@ -36,9 +38,10 @@ def get_weather():
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_KEY}&units=metric&lang=hi"
         w_res = requests.get(url, timeout=5).json()
         return city, w_res['main']['temp'], w_res['weather'][0]['description']
-    except: return "Dehradun", "--", "Mausam Jankari"
+    except: 
+        return "Dehradun", "--", "Mausam Jankari"
 
-# --- 3. UI STYLING (Fixed Brackets) ---
+# --- 3. UI STYLING ---
 st.set_page_config(page_title="Kisan Sahayak AI", page_icon="🌾", layout="wide")
 
 st.markdown("""
@@ -76,13 +79,4 @@ elif v_in:
     prompt = v_in
 
 if prompt or img_file:
-    with st.spinner("AI जवाब तैयार कर रहा है..."):
-        try:
-            if img_file:
-                res = model.generate_content(["Is photo ko kisan ke liye samjhayein Hindi mein.", Image.open(img_file)])
-            else:
-                res = model.generate_content(prompt)
-            st.success(res.text)
-            if st.button("🔊 जवाब सुनें"):
-                audio_res =
-            
+    
