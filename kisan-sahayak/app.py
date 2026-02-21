@@ -92,7 +92,7 @@ sel = option_menu(None, ["Home", "Schemes", "Shop", "Dev"],
 if sel == "Home":
     city, temp, desc = get_w()
     st.info(f"📍 {city} | 🌡️ {temp}°C | {desc}")
-    st.write("### Swagat hai Sameer! Aapka AI Assistant taiyar hai.")
+    st.write("### Swagat hai ! Aapka AI Assistant taiyar hai.")
 
 elif sel == "Schemes":
     sc1, sc2 = st.columns(2)
@@ -113,3 +113,4 @@ elif sel == "Dev":
         <p>Phone: 9897979032</p>
     </div>
     """, unsafe_allow_html=True)
+
