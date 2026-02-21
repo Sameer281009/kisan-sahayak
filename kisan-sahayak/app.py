@@ -7,7 +7,7 @@ import asyncio
 import edge_tts
 import requests
 
-# --- 1. CONFIG (Using full model path) ---
+# --- 1. CONFIG ---
 try:
     GEN_K = st.secrets["GENAI_KEY"]
     W_K = st.secrets["WEATHER_KEY"]
@@ -17,11 +17,21 @@ except:
 
 genai.configure(api_key=GEN_K)
 
-# Model name fixed to full path to avoid 'NotFound' error
-MODEL_NAME = 'models/gemini-1.5-flash'
-model = genai.GenerativeModel(MODEL_NAME)
+# --- SMART MODEL PICKER ---
+def get_ai_response(prompt, image=None):
+    # Pehle flash try karo, phir pro
+    for m_name in ['gemini-1.5-flash', 'gemini-pro']:
+        try:
+            model = genai.GenerativeModel(m_name)
+            if image:
+                return model.generate_content([prompt, image]).text
+            else:
+                return model.generate_content(prompt).text
+        except:
+            continue
+    return "Google AI abhi thoda thaka hua hai. 1 minute baad koshish karein."
 
-# --- 2. FUNCTIONS ---
+# --- 2. VOICE & WEATHER ---
 async def speak(text):
     try:
         tpl = edge_tts.Communicate(text[:250], "hi-IN-MadhurNeural")
@@ -48,8 +58,7 @@ st.markdown("""
 <style>
     .stApp { background-color: #0E1117; color: white; }
     .header { background: #1A1C23; padding: 20px; border-radius: 15px; border-bottom: 5px solid #4CAF50; text-align: center; margin-bottom: 20px;}
-    .card { background: #1A1C23; padding: 20px; border-radius: 15px; border: 1px solid #2E7D32; text-align: center; }
-    .dev { background: #16191f; padding: 30px; border-radius: 20px; border: 2px solid #4CAF50; text-align: center; }
+    .card { background: #1A1C23; padding: 20px; border-radius: 15px; border: 1px solid #2E7D32; text-align: center; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -58,29 +67,22 @@ st.markdown("<div class='header'><h1>🌾 किसान सहायक AI</h1
 # Main Inputs
 c1, c2, c3 = st.columns([1, 2, 1])
 with c1: img_file = st.camera_input("📸 Photo")
-with c2: txt_input = st.text_input("🔍 Sawal:", placeholder="Yahan likhein...")
+with c2: txt_in = st.text_input("🔍 Sawal:", placeholder="Yahan likhein...")
 with c3: 
     st.write("🎤 Mic")
     v_in = speech_to_text(language='hi', key='mic')
 
-# Logic
-final_q = txt_input if txt_input else v_in
+# Process Logic
+final_q = txt_in if txt_in else v_in
 
 if final_q or img_file:
-    with st.spinner("AI dhoond raha hai..."):
-        try:
-            if img_file:
-                p_img = Image.open(img_file)
-                res = model.generate_content(["Kisan ki madad karein Hindi mein:", p_img])
-            else:
-                res = model.generate_content(final_q)
-            
-            st.success(res.text)
-            if st.button("🔊 Suniye"):
-                aud = asyncio.run(speak(res.text))
-                if aud: st.audio(aud, format="audio/mp3", autoplay=True)
-        except Exception as e:
-            st.error("AI service abhi busy hai, 1 min rukiye.")
+    with st.spinner("AI Jawab nikaal raha hai..."):
+        p_img = Image.open(img_file) if img_file else None
+        ans = get_ai_response(final_q if final_q else "Is photo ke baare mein batayein", p_img)
+        st.success(ans)
+        if st.button("🔊 Suniye"):
+            aud = asyncio.run(speak(ans))
+            if aud: st.audio(aud, format="audio/mp3", autoplay=True)
 
 # --- 4. NAV ---
 sel = option_menu(None, ["Home", "Schemes", "Shop", "Dev"], 
@@ -90,26 +92,20 @@ sel = option_menu(None, ["Home", "Schemes", "Shop", "Dev"],
 if sel == "Home":
     city, temp, desc = get_w()
     st.info(f"📍 {city} | 🌡️ {temp}°C | {desc}")
-    st.write("### Swagat hai Sameer!")
+    st.write("### Swagat hai Sameer! Aapka AI Assistant taiyar hai.")
 
 elif sel == "Schemes":
     sc1, sc2 = st.columns(2)
     with sc1:
         if st.button("PM Kisan Jankari"):
-            try:
-                ans = model.generate_content("PM Kisan Samman Nidhi details in Hindi short")
-                st.write(ans.text)
-            except: st.error("Model error")
+            st.write(get_ai_response("PM Kisan Samman Nidhi details in Hindi short"))
     with sc2:
         if st.button("Fasal Bima Jankari"):
-            try:
-                ans = model.generate_content("Pradhan Mantri Fasal Bima Yojana Hindi")
-                st.write(ans.text)
-            except: st.error("Model error")
+            st.write(get_ai_response("Pradhan Mantri Fasal Bima Yojana Hindi short"))
 
 elif sel == "Dev":
     st.markdown(f"""
-    <div class='dev'>
+    <div style='background:#16191f; padding:30px; border-radius:20px; border:2px solid #4CAF50; text-align:center;'>
         <h2>Sameer (11th PCM)</h2>
         <p>Dehradun, Uttarakhand</p>
         <hr>
