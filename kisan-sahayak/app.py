@@ -7,82 +7,100 @@ import asyncio
 import edge_tts
 import requests
 
-# --- 1. API CONFIGURATION ---
+# --- 1. CONFIG ---
 try:
-    GENAI_KEY = st.secrets["GENAI_KEY"]
-    WEATHER_KEY = st.secrets["WEATHER_KEY"]
+    GEN_K = st.secrets["GENAI_KEY"]
+    W_K = st.secrets["WEATHER_KEY"]
 except:
-    GENAI_KEY = "AIzaSyDPR1ngpDDEotM1f8JWTgNOaFIMVfrGk5o"
-    WEATHER_KEY = "af1ec00f9fc32d17017dc84cdc7b7613"
+    GEN_K = "AIzaSyDPR1ngpDDEotM1f8JWTgNOaFIMVfrGk5o"
+    W_K = "af1ec00f9fc32d17017dc84cdc7b7613"
 
-genai.configure(api_key=GENAI_KEY)
+genai.configure(api_key=GEN_K)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# --- 2. HELPER FUNCTIONS ---
-async def generate_voice(text):
+# --- 2. FUNCTIONS ---
+async def speak(text):
     try:
-        communicate = edge_tts.Communicate(text[:250], "hi-IN-MadhurNeural")
-        audio_data = b""
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio": 
-                audio_data += chunk["data"]
-        return audio_data
-    except: 
-        return None
+        tpl = edge_tts.Communicate(text[:250], "hi-IN-MadhurNeural")
+        data = b""
+        async for chk in tpl.stream():
+            if chk["type"] == "audio": data += chk["data"]
+        return data
+    except: return None
 
 @st.cache_data(ttl=3600)
-def get_weather():
+def get_w():
     try:
-        res = requests.get('http://ip-api.com/json/', timeout=5).json()
-        city = res.get('city', 'Dehradun')
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_KEY}&units=metric&lang=hi"
-        w_res = requests.get(url, timeout=5).json()
-        return city, w_res['main']['temp'], w_res['weather'][0]['description']
-    except: 
-        return "Dehradun", "--", "Mausam Jankari"
+        r = requests.get('http://ip-api.com/json/', timeout=5).json()
+        c = r.get('city', 'Dehradun')
+        u = f"http://api.openweathermap.org/data/2.5/weather?q={c}&appid={W_K}&units=metric&lang=hi"
+        res = requests.get(u, timeout=5).json()
+        return c, res['main']['temp'], res['weather'][0]['description']
+    except: return "Dehradun", "--", "Net Slow"
 
-# --- 3. UI STYLING (Checking for Errors here) ---
-st.set_page_config(page_title="Kisan Sahayak AI", page_icon="🌾", layout="wide")
+# --- 3. UI ---
+st.set_page_config(page_title="Kisan Sahayak", layout="wide")
 
 st.markdown("""
 <style>
     .stApp { background-color: #0E1117; color: white; }
-    .header-box { background: #1A1C23; padding: 20px; border-radius: 15px; border-bottom: 5px solid #4CAF50; text-align: center; margin-bottom: 25px; }
-    .kisan-card { background: #1A1C23; padding: 20px; border-radius: 15px; border: 1px solid #2E7D32; text-align: center; min-height: 180px; }
-    .stButton>button { width: 100%; border-radius: 10px; background-color: #1B5E20 !important; color: white !important; font-weight: bold; }
-    .dev-card { background: linear-gradient(145deg, #1e2129, #16191f); padding: 30px; border-radius: 20px; border: 2px solid #4CAF50; text-align: center; }
+    .header { background: #1A1C23; padding: 20px; border-radius: 15px; border-bottom: 5px solid #4CAF50; text-align: center; }
+    .card { background: #1A1C23; padding: 20px; border-radius: 15px; border: 1px solid #2E7D32; text-align: center; }
+    .dev { background: #16191f; padding: 30px; border-radius: 20px; border: 2px solid #4CAF50; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. GLOBAL HEADER ---
-st.markdown("<div class='header-box'><h1>🌾 किसान सहायक AI</h1><p>Samajhdar Kheti, Khushal Kisan</p></div>", unsafe_allow_html=True)
+st.markdown("<div class='header'><h1>🌾 किसान सहायक AI</h1></div>", unsafe_allow_html=True)
 
-# Variables ko start mein hi define karna zaruri hai
-img_file = None
+# Variables
+img = None
 v_in = None
-prompt = None
+txt = None
 
-h_col1, h_col2, h_col3 = st.columns([1, 2, 1])
+c1, c2, c3 = st.columns([1, 2, 1])
+with c1: img = st.camera_input("📸 Photo")
+with c2: txt = st.text_input("🔍 Sawal:", placeholder="Yahan likhein...")
+with c3: v_in = speech_to_text(language='hi', key='mic', start_prompt="🎤 Bolen")
 
-with h_col1:
-    img_file = st.camera_input("📸 फोटो लें", key="global_cam")
+# AI Logic
+final_q = txt if txt else v_in
 
-with h_col2:
-    global_q = st.text_input("🔍 सवाल पूछें:", placeholder="यहाँ लिखें... जैसे: गेंहू में खाद कब डालें?", key="global_q_input")
-
-with h_col3:
-    st.write("🎤 बोलकर पूछें")
-    v_in = speech_to_text(language='hi', key='global_mic', start_prompt="बोलने के लिए दबाएँ")
-
-# Input logic
-if global_q: 
-    prompt = global_q
-elif v_in: 
-    prompt = v_in
-
-# AI Response Section
-if prompt or img_file:
-    with st.spinner("AI जवाब तैयार कर रहा है..."):
+if final_q or img:
+    with st.spinner("Wait..."):
         try:
-            if img_file:
-                res = model.generate_content(["Is photo ko kisan ke liye samjhayein Hindi mein.", Image.open(img_
+            if img:
+                # Line broken for safety
+                p_img = Image.open(img)
+                res = model.generate_content(["Is photo ko samjhayein", p_img])
+            else:
+                res = model.generate_content(final_q)
+            
+            st.success(res.text)
+            if st.button("🔊 Suniye"):
+                aud = asyncio.run(speak(res.text))
+                if aud: st.audio(aud, format="audio/mp3", autoplay=True)
+        except: st.error("Limit/Error")
+
+# --- 4. NAV ---
+sel = option_menu(None, ["Home", "Schemes", "Shop", "Dev"], 
+    icons=["house", "book", "cart", "person"], orientation="horizontal")
+
+if sel == "Home":
+    city, temp, desc = get_w()
+    st.info(f"📍 {city} | 🌡️ {temp}C | {desc}")
+
+elif sel == "Schemes":
+    sc1, sc2 = st.columns(2)
+    with sc1:
+        if st.button("PM Kisan"): st.write(model.generate_content("PM Kisan Hindi").text)
+    with sc2:
+        if st.button("Fasal Bima"): st.write(model.generate_content("Fasal Bima Hindi").text)
+
+elif sel == "Dev":
+    st.markdown(f"""
+    <div class='dev'>
+        <h2>Sameer (11th PCM)</h2>
+        <p>Dehradun, Uttarakhand</p>
+        <p>Contact: 9897979032</p>
+    </div>
+    """, unsafe_allow_html=True)
