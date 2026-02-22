@@ -7,18 +7,19 @@ import asyncio
 import edge_tts
 import requests
 
-# --- 1. API SETUP ---
-# Tumhari nayi key yahan update kar di hai
+# --- 1. CONFIGURATION ---
+# Sameer, tumhari nayi key yahan active hai
 API_KEY = "AIzaSyAgSqPVmLHwa0DkrFkiu3dZV_gbLMxAHGg"
 WEATHER_KEY = "af1ec00f9fc32d17017dc84cdc7b7613"
 
 genai.configure(api_key=API_KEY)
 
+# AI Response Logic (Robust Version)
 def get_ai_response(prompt, image=None):
-    # Multiple model names testing to avoid 404
-    for m_name in ['gemini-1.5-flash', 'models/gemini-1.5-flash', 'gemini-pro']:
+    models = ['gemini-1.5-flash', 'models/gemini-1.5-flash', 'gemini-pro']
+    for m in models:
         try:
-            model = genai.GenerativeModel(m_name)
+            model = genai.GenerativeModel(m)
             if image:
                 res = model.generate_content([prompt, image])
             else:
@@ -26,14 +27,12 @@ def get_ai_response(prompt, image=None):
             return res.text
         except:
             continue
-    return "Error: Model nahi mil raha. Please check AI Studio Terms."
+    return "AI abhi busy hai. Nayi API Key check karein ya Terms of Service accept karein."
 
-# --- 2. UI & STYLING ---
-st.set_page_config(page_title="Kisan Sahayak", layout="wide")
-
-st.markdown("""
-<style>
-    .stApp { background-color: #0E1117; color: white; }
+# Weather Logic
+def get_weather_data():
+    try:
+        url = f"
     .header { background: #1A1C23; padding: 20px; border-radius: 15px; border-bottom: 5px solid #4CAF50; text-align: center; }
     .card { background: #1A1C23; padding: 15px; border-radius: 10px; border: 1px solid #4CAF50; margin-bottom: 10px; text-align: center; }
 </style>
@@ -198,4 +197,5 @@ elif selected == "Developer":
         <p>📧 sameer2810092009@gmail.com | 📞 9897979032</p>
     </div>
     """, unsafe_allow_html=True)
+
 
