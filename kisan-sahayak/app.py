@@ -12,7 +12,7 @@ try:
     GEN_K = st.secrets["GENAI_KEY"]
     W_K = st.secrets["WEATHER_KEY"]
 except:
-    GEN_K = "AIzaSyDPR1ngpDDEotM1f8JWTgNOaFIMVfrGk5o"
+    GEN_K = "AIzaSyAHYhcqdKgRTqJk6hojwMEeIJwU4ZXcSv8"
     W_K = "af1ec00f9fc32d17017dc84cdc7b7613"
 
 genai.configure(api_key=GEN_K)
@@ -113,4 +113,5 @@ elif sel == "Dev":
         <p>Phone: 9897979032</p>
     </div>
     """, unsafe_allow_html=True)
+
 
